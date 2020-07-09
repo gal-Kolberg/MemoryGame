@@ -1,32 +1,49 @@
-﻿namespace MemoryGame
+﻿using System;
+using System.Drawing;
+
+namespace MemoryGameLogic
 {
     public class GameBoard
     {
+        internal readonly Random r_RandGen = new System.Random();
         internal readonly int r_Rows;
         internal readonly int r_Cols;
         internal int[,] m_Board;
         internal eCellState[,] m_State;
 
+        internal Random RandGen
+        {
+            get
+            {
+                return r_RandGen;
+            }
+        }
+
         public GameBoard(int i_Rows, int i_Cols)
         {
-            m_Board = new int[i_Rows, i_Cols];
+            Board = new int[i_Rows, i_Cols];
             m_State = new eCellState[i_Rows, i_Cols];
             r_Rows = i_Rows;
             r_Cols = i_Cols;
             InitState();
             initBoard();
-            this.shuffleBoard();
+            shuffleBoard();
         }
 
         internal void InitState()
         {
-            for (int i = 0; i < r_Rows; i++)
+            for (int i = 0; i < Rows; i++)
             {
-                for (int j = 0; j < r_Cols; j++)
+                for (int j = 0; j < Cols; j++)
                 {
-                    m_State[i, j] = eCellState.Closed;
+                    State[i, j] = eCellState.Closed;
                 }
             }
+        }
+
+        public int GetKey(int i_Row, int i_Col)
+        {
+            return Board[i_Row, i_Col];
         }
 
         private void initBoard()
@@ -34,11 +51,11 @@
             int initialValue = 0;
             int changeTile = 0;
 
-            for (int i = 0; i < r_Rows; i++)
+            for (int i = 0; i < Rows; i++)
             {
-                for (int j = 0; j < r_Cols; j++)
+                for (int j = 0; j < Cols; j++)
                 {
-                    m_Board[i, j] = initialValue;
+                    Board[i, j] = initialValue;
                     changeTile++;
 
                     if (changeTile % 2 == 0)
@@ -49,43 +66,109 @@
             }
         }
 
+        public bool IsOpen(int i_Row, int i_Col)
+        {
+            bool isOpen = false;
+
+            if(m_State[i_Row, i_Col] == eCellState.Open)
+            {
+                isOpen = true;
+            }
+
+            return isOpen;
+        }
+
+        public bool IsOpenOrTurnOpen(int i_Row, int i_Col)
+        {
+            bool isOpenOrTurnOpen = false;
+
+            if (m_State[i_Row, i_Col] == eCellState.Open || m_State[i_Row, i_Col] == eCellState.TurnOpen)
+            {
+                isOpenOrTurnOpen = true;
+            }
+
+            return isOpenOrTurnOpen;
+        }
+
         private void shuffleBoard()
         {
-            System.Random randGen = new System.Random();
-            int           rows = this.r_Rows;
-            int           cols = this.r_Cols;
-            int           minValue = 0;
+            int rows = Rows;
+            int cols = Cols;
+            int minValue = 0;
 
             for (int i = 0; i < rows; i++)
             {
                 for (int j = 0; j < cols; j++)
                 {
-                    swapCells(ref this.m_Board[i, j], ref this.m_Board[randGen.Next(minValue, rows), randGen.Next(minValue, cols)]);
+                    swapCells(ref Board[i, j], ref Board[RandGen.Next(minValue, rows), RandGen.Next(minValue, cols)]);
                 }
             }
         }
 
-        private void swapCells(ref int i_LeftVal, ref int i_RightVal)
+        private void swapCells(ref int io_LeftVal, ref int io_RightVal)
         {
-            int temp = i_LeftVal;
+            int temp = io_LeftVal;
 
-            i_LeftVal = i_RightVal;
-            i_RightVal = temp;
+            io_LeftVal = io_RightVal;
+            io_RightVal = temp;
         }
 
-        public int FirstChoice(int i_RowInput, int i_ColInput)
+        public void FirstChoice(int i_RowInput, int i_ColInput)
         {
             m_State[i_RowInput, i_ColInput] = eCellState.TurnOpen;
-            return m_Board[i_RowInput, i_ColInput];
         }
 
-        public bool SecondChoice(int i_RowInput, int i_ColInput, int i_OpenedTile)
+        private int lastTileOpened()
+        {
+            int valueOpened = -1;
+
+            for (int i = 0; i < Rows; i++)
+            {
+                for (int j = 0; j < Cols; j++)
+                {
+                    if (m_State[i, j] == eCellState.TurnOpen)
+                    {
+                        valueOpened = Board[i, j];
+                        break;
+                    }
+                }
+            }
+
+            return valueOpened;
+        }
+
+        public Point PointLastOpenedTile()
+        {
+            Point tileCoordinate = new Point();
+
+            for (int i = 0; i < Rows; i++)
+            {
+                for (int j = 0; j < Cols; j++)
+                {
+                    if (m_State[i, j] == eCellState.TurnOpen)
+                    {
+                        tileCoordinate.X = i;
+                        tileCoordinate.Y = j;
+                        break;
+                    }
+                }
+            }
+
+            return tileCoordinate;
+        }
+
+        public void MakeTurnOpen(int i_RowInput, int i_ColInput)
+        {
+            m_State[i_RowInput, i_ColInput] = eCellState.TurnOpen;
+        }
+
+        public bool SecondChoice(int i_RowInput, int i_ColInput)
         {
             bool sameValue;
             bool sameTurn = false;
+            int lastOpenedValue = lastTileOpened();
 
-            m_State[i_RowInput, i_ColInput] = eCellState.TurnOpen;
-            sameValue = m_Board[i_RowInput, i_ColInput] == i_OpenedTile;
+            sameValue = Board[i_RowInput, i_ColInput] == lastOpenedValue;
 
             if (sameValue == true)
             {
@@ -96,40 +179,32 @@
             return sameTurn;
         }
 
-        internal void MakeRevealed()
+        public void MakeRevealed(int i_RowFirst, int i_ColFirst, int i_RowSecond, int i_ColSecond)
         {
-            for (int i = 0; i < r_Rows; i++)
-            {
-                for (int j = 0; j < r_Cols; j++)
-                {
-                    if (m_State[i, j] == eCellState.TurnOpen)
-                    {
-                        m_State[i, j] = eCellState.Revealed;
-                    }
-                }
-            }
+            m_State[i_RowFirst, i_ColFirst] = eCellState.Revealed;
+            m_State[i_RowSecond, i_ColSecond] = eCellState.Revealed;
         }
 
         internal bool CheckIfScore()
         {
-            int       fstTile = int.MinValue;
-            int       sndTile = int.MaxValue;
-            int       count = 0;
+            int fstTile = int.MinValue;
+            int sndTile = int.MaxValue;
+            int count = 0;
             const int k_FstFound = 0;
             const int k_SndFound = 1;
 
-            for (int i = 0; i < r_Rows; i++)
+            for (int i = 0; i < Rows; i++)
             {
-                for (int j = 0; j < r_Cols; j++)
+                for (int j = 0; j < Cols; j++)
                 {
                     if (m_State[i, j] == eCellState.TurnOpen && count == k_FstFound)
                     {
-                        fstTile = m_Board[i, j];
+                        fstTile = Board[i, j];
                         count++;
                     }
                     else if (m_State[i, j] == eCellState.TurnOpen && count == k_SndFound)
                     {
-                        sndTile = m_Board[i, j];
+                        sndTile = Board[i, j];
                         break;
                     }
                 }
@@ -138,11 +213,17 @@
             return fstTile == sndTile;
         }
 
-        internal void MakeOpen()
+        public void MakeOpen(int i_RowFirst, int i_ColFirst, int i_RowSecond, int i_ColSecond)
         {
-            for (int i = 0; i < r_Rows; i++)
+            m_State[i_RowFirst, i_ColFirst] = eCellState.Open;
+            m_State[i_RowSecond, i_ColSecond] = eCellState.Open;
+        }
+
+        public void MakeOpen()
+        {
+            for (int i = 0; i < Rows; i++)
             {
-                for (int j = 0; j < r_Cols; j++)
+                for (int j = 0; j < Cols; j++)
                 {
                     if (m_State[i, j] == eCellState.TurnOpen)
                     {
@@ -167,13 +248,42 @@
 
             return gameWon;
         }
-    }
 
-    internal enum eCellState
-    {
-        Closed,
-        TurnOpen,
-        Revealed,
-        Open
+        internal int[,] Board
+        {
+            get
+            {
+                return m_Board;
+            }
+
+            set
+            {
+                m_Board = value;
+            }
+        }
+
+        internal int Rows
+        {
+            get
+            {
+                return r_Rows;
+            }
+        }
+
+        internal int Cols
+        {
+            get
+            {
+                return r_Cols;
+            }
+        }
+
+        internal eCellState[,] State
+        {
+            get
+            {
+                return m_State;
+            }
+        }
     }
 }

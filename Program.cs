@@ -1,14 +1,10 @@
-﻿using MemoryGame;
-
-namespace Program
+﻿namespace MemoryGameUI
 {
-    class Program
+    public class Program
     {
         public static void Main()
         {
-            Interface.StartGame();
-            System.Console.WriteLine("Please press 'Enter' to exit...");
-            System.Console.ReadLine();
+            GameManager.PlayGame();
         }
     }
 }
